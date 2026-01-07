@@ -358,7 +358,7 @@ window.renderWebhookEditor = async (id) => {
                         <div class="form-group">
                             <label>Available Variables (Click to copy)</label>
                             <div id="variable-list">
-                                ${webhook.variables ? webhook.variables.map(v =>
+                                ${(activePayload && activePayload.data) ? discoverVariables(activePayload.data).map(v =>
         `<span class="var-pill" onclick="insertVar('{{${v.key}}}')">{{${v.key}}}</span>`
     ).join('') : '<small style="color: var(--text-muted)">No variables found in selected payload</small>'}
                             </div>
@@ -703,6 +703,33 @@ function formatJson(data) {
         // If parse fails or it's not JSON, just return stringified valid value or original
         return escapeHtml(typeof data === 'string' ? data : JSON.stringify(data, null, 2));
     }
+}
+
+function discoverVariables(payload, prefix = '') {
+    let vars = [];
+
+    if (!payload || typeof payload !== 'object') return vars;
+
+    for (const [key, value] of Object.entries(payload)) {
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+
+        if (Array.isArray(value)) {
+            vars.push({ key: fullKey, type: 'Array' });
+        } else if (value !== null && typeof value === 'object') {
+            vars = vars.concat(discoverVariables(value, fullKey));
+        } else if (typeof value === 'string') {
+            try {
+                const parsed = JSON.parse(value);
+                if (parsed && typeof parsed === 'object') {
+                    vars = vars.concat(discoverVariables(parsed, fullKey));
+                }
+            } catch (e) { }
+            vars.push({ key: fullKey, type: 'string' });
+        } else {
+            vars.push({ key: fullKey, type: typeof value });
+        }
+    }
+    return vars;
 }
 
 window.showLogDetails = async (id) => {
