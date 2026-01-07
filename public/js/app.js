@@ -708,22 +708,39 @@ function formatJson(data) {
 function discoverVariables(payload, prefix = '') {
     let vars = [];
 
+    // Handle stringified payload at the root or recursively
+    if (typeof payload === 'string') {
+        try {
+            payload = JSON.parse(payload);
+        } catch (e) {
+            // If it's just a string, we can't discover children, unless it's the leaf.
+            return vars;
+        }
+    }
+
     if (!payload || typeof payload !== 'object') return vars;
 
     for (const [key, value] of Object.entries(payload)) {
         const fullKey = prefix ? `${prefix}.${key}` : key;
 
         if (Array.isArray(value)) {
+            // Check if array items are objects?
+            if (value.length > 0 && typeof value[0] === 'object') {
+                // Maybe discover unique keys from first item to give a hint?
+                // vars = vars.concat(discoverVariables(value[0], `${fullKey}[0]`));
+            }
             vars.push({ key: fullKey, type: 'Array' });
         } else if (value !== null && typeof value === 'object') {
             vars = vars.concat(discoverVariables(value, fullKey));
         } else if (typeof value === 'string') {
-            try {
-                const parsed = JSON.parse(value);
-                if (parsed && typeof parsed === 'object') {
-                    vars = vars.concat(discoverVariables(parsed, fullKey));
-                }
-            } catch (e) { }
+            let parsed = null;
+            try { parsed = JSON.parse(value); } catch (e) { }
+
+            if (parsed && typeof parsed === 'object') {
+                // It's a nested JSON string! Recurse.
+                vars = vars.concat(discoverVariables(parsed, fullKey));
+            }
+
             vars.push({ key: fullKey, type: 'string' });
         } else {
             vars.push({ key: fullKey, type: typeof value });
