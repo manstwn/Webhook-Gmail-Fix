@@ -311,7 +311,7 @@ window.renderWebhookEditor = async (id) => {
                     ${activePayload ? `
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem"><strong>Active Payload:</strong> ${activePayload.name}</p>
                         <div class="code-block" style="max-height: 200px; overflow-y: auto;">
-                            ${escapeHtml(JSON.stringify(activePayload.data || {}, null, 2))}
+                            ${formatJson(activePayload.data || {})}
                         </div>
                     ` : `
                         <div style="text-align: center; padding: 1rem;">
@@ -693,6 +693,18 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
+function formatJson(data) {
+    if (!data) return "{}";
+    try {
+        // If it's a string, try to parse it first to avoid double stringify
+        const obj = typeof data === 'string' ? JSON.parse(data) : data;
+        return escapeHtml(JSON.stringify(obj, null, 2));
+    } catch (e) {
+        // If parse fails or it's not JSON, just return stringified valid value or original
+        return escapeHtml(typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+    }
+}
+
 window.showLogDetails = async (id) => {
     // We need to find the log entry. Since we don't have it in memory globally, we can re-fetch or pass data.
     // Fetching is safer.
@@ -728,7 +740,7 @@ window.showLogDetails = async (id) => {
                 ${log.messageId ? `<div class="code-block" style="color: var(--success); margin-bottom: 1rem">Message ID: ${log.messageId}</div>` : ''}
 
                 <h4>Payload Data</h4>
-                <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${escapeHtml(JSON.stringify(log.payload, null, 2))}</div>
+                <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${formatJson(log.payload)}</div>
                 
                 ${log.emailStatus !== 'Skipped (Draft)' ? `
                     <h4>Email Sent</h4>
