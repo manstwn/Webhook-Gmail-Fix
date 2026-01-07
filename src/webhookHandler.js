@@ -15,6 +15,17 @@ function discoverVariables(payload, prefix = '') {
             vars.push({ key: fullKey, type: 'Array', sample: JSON.stringify(value) });
         } else if (value !== null && typeof value === 'object') {
             vars = vars.concat(discoverVariables(value, fullKey));
+        } else if (typeof value === 'string') {
+            // Try to parse string as JSON to discover nested variables
+            try {
+                const parsed = JSON.parse(value);
+                if (parsed && typeof parsed === 'object') {
+                    vars = vars.concat(discoverVariables(parsed, fullKey));
+                }
+            } catch (e) {
+                // Not JSON, just a string
+            }
+            vars.push({ key: fullKey, type: 'string', sample: value });
         } else {
             vars.push({ key: fullKey, type: typeof value, sample: String(value) });
         }
@@ -48,6 +59,9 @@ async function processWebhook(id, payload) {
         timestamp: new Date().toISOString(),
         data: payload
     });
+
+    // Update available variables based on latest payload
+    webhook.variables = discoverVariables(payload);
 
     // Cap payloads at 50 to prevent file bloat
     if (webhook.payloads.length > 50) webhook.payloads.pop();
