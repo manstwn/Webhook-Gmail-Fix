@@ -311,7 +311,7 @@ window.renderWebhookEditor = async (id) => {
                     ${activePayload ? `
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem"><strong>Active Payload:</strong> ${activePayload.name}</p>
                         <div class="code-block" style="max-height: 200px; overflow-y: auto;">
-                            ${JSON.stringify(activePayload.data || {}, null, 2)}
+                            ${escapeHtml(JSON.stringify(activePayload.data || {}, null, 2))}
                         </div>
                     ` : `
                         <div style="text-align: center; padding: 1rem;">
@@ -683,6 +683,16 @@ window.clearWebhookLogs = async (id) => {
     showToast('Logs cleared', 'success');
 };
 
+function escapeHtml(text) {
+    if (!text) return text;
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 window.showLogDetails = async (id) => {
     // We need to find the log entry. Since we don't have it in memory globally, we can re-fetch or pass data.
     // Fetching is safer.
@@ -718,15 +728,15 @@ window.showLogDetails = async (id) => {
                 ${log.messageId ? `<div class="code-block" style="color: var(--success); margin-bottom: 1rem">Message ID: ${log.messageId}</div>` : ''}
 
                 <h4>Payload Data</h4>
-                <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${JSON.stringify(log.payload, null, 2)}</div>
+                <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${escapeHtml(JSON.stringify(log.payload, null, 2))}</div>
                 
                 ${log.emailStatus !== 'Skipped (Draft)' ? `
                     <h4>Email Sent</h4>
                     <div class="card" style="background: rgba(255,255,255,0.05); padding: 1rem">
-                        <div style="margin-bottom: 0.5rem"><strong>To:</strong> ${log.recipient || '-'}</div>
-                        <div style="margin-bottom: 0.5rem"><strong>Subject:</strong> ${log.subject || '-'}</div>
+                        <div style="margin-bottom: 0.5rem"><strong>To:</strong> ${escapeHtml(log.recipient || '-')}</div>
+                        <div style="margin-bottom: 0.5rem"><strong>Subject:</strong> ${escapeHtml(log.subject || '-')}</div>
                         <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 0.5rem 0">
-                        <div style="white-space: pre-wrap; font-family: sans-serif">${log.body ? log.body.replace(/</g, '&lt;') : '-'}</div>
+                        <div style="white-space: pre-wrap; font-family: sans-serif">${log.body ? escapeHtml(log.body) : '-'}</div>
                     </div>
                 ` : ''}
             </div>
