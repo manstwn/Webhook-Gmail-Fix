@@ -10,6 +10,20 @@ function getValue(obj, path) {
         if (current === null || current === undefined) {
             return undefined;
         }
+
+        // Auto-parse string if we are trying to access a child property
+        if (typeof current === 'string') {
+            try {
+                const parsed = JSON.parse(current);
+                if (parsed && typeof parsed === 'object') {
+                    current = parsed;
+                }
+            } catch (e) {
+                // Not JSON, can't traverse
+                return undefined;
+            }
+        }
+
         current = current[key];
     }
     return current;
