@@ -25,9 +25,10 @@ app.use(routes);
 
 // Configuration Endpoint
 app.get('/api/config', (req, res) => {
-    res.json({
-        host: process.env.HOST || `http://localhost:${PORT}`
-    });
+    let host = process.env.HOST || `http://localhost:${PORT}`;
+    if (host.endsWith('/')) host = host.slice(0, -1);
+
+    res.json({ host });
 });
 
 // SPA Fallback
