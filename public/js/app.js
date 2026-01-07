@@ -311,7 +311,7 @@ window.renderWebhookEditor = async (id) => {
                     ${activePayload ? `
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem"><strong>Active Payload:</strong> ${activePayload.name}</p>
                         <div class="code-block" style="max-height: 200px; overflow-y: auto;">
-                            ${JSON.stringify(activePayload.data, null, 2)}
+                            ${JSON.stringify(activePayload.data || {}, null, 2)}
                         </div>
                     ` : `
                         <div style="text-align: center; padding: 1rem;">

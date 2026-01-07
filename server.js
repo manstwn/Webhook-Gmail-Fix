@@ -13,9 +13,20 @@ console.log("Initializing data...");
 db.ensureDataDir();
 
 // Middleware
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser('webhook-secret-key')); // Secret should be in env but hardcoded for this local tool
+app.use(express.text({ type: ['text/*', 'application/xml', 'application/xhtml+xml', 'html'] })); // Capture text/xml as string body
+app.use(cookieParser('webhook-secret-key'));
 
 // Static Files - Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));
