@@ -70,6 +70,8 @@ async function router() {
         }
     } else if (path === '/email-park') {
         renderEmailPark();
+    } else if (path === '/settings/cors') {
+        renderCorsSettings();
     } else {
         renderDashboard();
     }
@@ -122,6 +124,7 @@ async function renderDashboard() {
             <div class="nav-links">
                 <div class="nav-item active">Dashboard</div>
                 <div class="nav-item" onclick="navigate('/email-park')">Email Park</div>
+                <div class="nav-item" onclick="navigate('/settings/cors')">CORS Settings</div>
                 <div class="nav-item" onclick="logout()">Logout</div>
             </div>
         </nav>
@@ -177,6 +180,7 @@ async function renderEmailPark() {
             <div class="nav-links">
                 <div class="nav-item" onclick="navigate('/dashboard')">Dashboard</div>
                 <div class="nav-item active">Email Park</div>
+                <div class="nav-item" onclick="navigate('/settings/cors')">CORS Settings</div>
                 <div class="nav-item" onclick="logout()">Logout</div>
             </div>
         </nav>
@@ -209,6 +213,66 @@ async function renderEmailPark() {
         `;
     });
 }
+
+async function renderCorsSettings() {
+    const res = await api('/settings/cors');
+    const cors = await res.json();
+
+    app.innerHTML = `
+        <nav class="nav">
+            <div class="nav-logo" onclick="navigate('/dashboard')" style="cursor: pointer"><i class="fas fa-bolt"></i> Webhook Mailer</div>
+            <div class="nav-links">
+                <div class="nav-item" onclick="navigate('/dashboard')">Dashboard</div>
+                <div class="nav-item" onclick="navigate('/email-park')">Email Park</div>
+                <div class="nav-item active">CORS Settings</div>
+                <div class="nav-item" onclick="logout()">Logout</div>
+            </div>
+        </nav>
+        
+        <div class="container">
+            <div class="card" style="max-width: 600px; margin: 0 auto;">
+                <h3>Global CORS Settings</h3>
+                <p>Manage allowed origins that can send requests to your webhooks.</p>
+                
+                <div class="form-group" style="display: flex; gap: 0.5rem">
+                    <input type="text" id="cors-input" placeholder="https://example.com or *" style="flex: 1">
+                    <button class="btn btn-primary" onclick="addCorsOrigin()">Add Origin</button>
+                </div>
+                
+                <div class="list-group" id="cors-list" style="border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden;">
+                    ${cors.map(origin => `
+                        <div style="padding: 1rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02)">
+                            <span style="font-family: monospace;">${origin}</span>
+                            <button class="btn btn-sm btn-danger" onclick="removeCorsOrigin('${origin}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                    ${cors.length === 0 ? '<div style="padding: 1rem; text-align: center; color: var(--text-muted)">No allowed origins configured. Requests may be blocked.</div>' : ''}
+                </div>
+                
+                <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted)">
+                    <i class="fas fa-info-circle"></i> Use <code>*</code> to allow all origins (not recommended for production).
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.addCorsOrigin = async () => {
+    const input = document.getElementById('cors-input');
+    const origin = input.value.trim();
+    if (!origin) return;
+
+    await api('/settings/cors', 'POST', { origin });
+    renderCorsSettings();
+    showToast('Origin added', 'success');
+};
+
+window.removeCorsOrigin = async (origin) => {
+    if (!confirm(`Remove ${origin}?`)) return;
+    await api('/settings/cors', 'DELETE', { origin });
+    renderCorsSettings();
+    showToast('Origin removed', 'success');
+};
 
 async function createWebhook() {
     const name = prompt("Enter Webhook Name:");

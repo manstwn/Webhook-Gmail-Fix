@@ -264,4 +264,30 @@ router.delete('/api/webhooks/:id/logs', (req, res) => {
     res.json({ success: true });
 });
 
+// Settings / CORS
+router.get('/api/settings/cors', (req, res) => {
+    const cors = db.read('cors') || ['*'];
+    res.json(cors);
+});
+
+router.post('/api/settings/cors', (req, res) => {
+    const { origin } = req.body;
+    if (!origin) return res.status(400).json({ error: 'Origin is required' });
+
+    const cors = db.read('cors') || [];
+    if (!cors.includes(origin)) {
+        cors.push(origin);
+        db.write('cors', cors);
+    }
+    res.json(cors);
+});
+
+router.delete('/api/settings/cors', (req, res) => {
+    const { origin } = req.body;
+    let cors = db.read('cors') || [];
+    cors = cors.filter(o => o !== origin);
+    db.write('cors', cors);
+    res.json(cors);
+});
+
 module.exports = router;

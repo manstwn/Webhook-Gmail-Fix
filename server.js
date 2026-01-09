@@ -14,7 +14,15 @@ db.ensureDataDir();
 
 // Middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const allowedOrigins = db.read('cors') || ['*'];
+    const origin = req.headers.origin;
+
+    if (allowedOrigins.includes('*')) {
+        res.header('Access-Control-Allow-Origin', '*');
+    } else if (origin && allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
     if (req.method === 'OPTIONS') {

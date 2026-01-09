@@ -8,13 +8,15 @@ const FILES = {
     email_park: path.join(DATA_DIR, 'email_park.json'),
     webhooks: path.join(DATA_DIR, 'webhooks.json'),
     logs: path.join(DATA_DIR, 'logs.json'),
+    cors: path.join(DATA_DIR, 'cors.json'),
 };
 
 const DEFAULTS = {
     users: { pin: '1234' },
     email_park: [],
     webhooks: [],
-    logs: []
+    logs: [],
+    cors: ["*"]
 };
 
 // Ensure data directory and files exist
