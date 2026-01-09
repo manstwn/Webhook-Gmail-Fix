@@ -718,10 +718,10 @@ window.testEmail = async (id) => {
     if (!data.senderId) { showToast('Please select a sender', 'error'); return; }
     if (!data.emailTemplate.to) { showToast('Please set a To address', 'error'); return; }
 
-    await api(`/ webhooks / ${id}`, 'PUT', data);
+    await api(`/webhooks/${id}`, 'PUT', data);
 
     showToast('Sending test email...', 'info');
-    const res = await api(`/ webhooks / ${id} / test - email`, 'POST', data);
+    const res = await api(`/webhooks/${id}/test-email`, 'POST', data);
     const json = await res.json();
 
     if (json.success) {
@@ -732,20 +732,20 @@ window.testEmail = async (id) => {
 };
 
 window.activateWebhook = async (id) => {
-    await api(`/ webhooks / ${id}`, 'PUT', { status: 'Active' });
+    await api(`/webhooks/${id}`, 'PUT', { status: 'Active' });
     renderWebhookEditor(id);
     showToast('Webhook Activated!', 'success');
 };
 
 window.deactivateWebhook = async (id) => {
-    await api(`/ webhooks / ${id}`, 'PUT', { status: 'Draft' });
+    await api(`/webhooks/${id}`, 'PUT', { status: 'Draft' });
     renderWebhookEditor(id);
     showToast('Webhook Deactivated', 'info');
 };
 
 window.deleteWebhook = async (id) => {
     if (confirm('Are you sure? This cannot be undone.')) {
-        await api(`/ webhooks / ${id}`, 'DELETE');
+        await api(`/webhooks/${id}`, 'DELETE');
         navigate('/dashboard');
     }
 };
@@ -800,7 +800,7 @@ function showPromptModal(message, isTextarea = false) {
 window.regenerateWebhookUrl = async (id) => {
     if (!confirm('Are you sure? This will invalidate the old URL immediately.')) return;
 
-    const res = await api(`/ webhooks / ${id} / regenerate`, 'POST');
+    const res = await api(`/webhooks/${id}/regenerate`, 'POST');
     if (res && res.ok) {
         const data = await res.json();
         showToast('New URL Generated', 'success');
@@ -813,7 +813,7 @@ window.regenerateWebhookUrl = async (id) => {
 
 window.clearWebhookLogs = async (id) => {
     if (!confirm('Clear all automation logs for this webhook?')) return;
-    await api(`/ webhooks / ${id} / logs`, 'DELETE');
+    await api(`/webhooks/${id}/logs`, 'DELETE');
     renderWebhookEditor(id);
     showToast('Logs cleared', 'success');
 };
