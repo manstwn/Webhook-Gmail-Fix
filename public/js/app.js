@@ -199,6 +199,9 @@ async function renderEmailPark() {
 
     const list = document.getElementById('sender-list');
 
+    // Store globally for edit access
+    window._emailSenders = senders;
+
     senders.forEach(s => {
         list.innerHTML += `
             <div class="card">
@@ -206,13 +209,18 @@ async function renderEmailPark() {
                 <p><strong>From:</strong> ${s.fromName} &lt;${s.fromEmail}&gt;</p>
                 <p><strong>Host:</strong> ${s.host}:${s.port}</p>
                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem">
-                    <button class="btn btn-sm btn-primary" onclick='openSenderModal(${JSON.stringify(s)})'>Edit</button>
+                    <button class="btn btn-sm btn-primary" onclick="editSender('${s.id}')">Edit</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteSender('${s.id}')">Delete</button>
                 </div>
             </div>
         `;
     });
 }
+
+window.editSender = (id) => {
+    const sender = window._emailSenders?.find(s => s.id === id);
+    if (sender) openSenderModal(sender);
+};
 
 async function renderSettings() {
     // Fetch both settings
@@ -643,7 +651,7 @@ window.openSenderModal = (sender = null) => {
         }
 
         if (isEdit) {
-            await api(\`/email-park/\${sender.id}\`, 'PUT', data);
+            await api(`/email-park/${sender.id}`, 'PUT', data);
             showToast('Sender updated!', 'success');
         } else {
             await api('/email-park', 'POST', data);
@@ -656,7 +664,7 @@ window.openSenderModal = (sender = null) => {
 
 window.deleteSender = async (id) => {
     if (confirm('Delete this sender?')) {
-        await api(`/ email - park / ${ id }`, 'DELETE');
+        await api(`/ email - park / ${id}`, 'DELETE');
         renderEmailPark();
     }
 };
@@ -673,7 +681,7 @@ window.saveWebhook = async (id) => {
         }
     };
 
-    await api(`/ webhooks / ${ id }`, 'PUT', data);
+    await api(`/ webhooks / ${id}`, 'PUT', data);
     showToast('Draft saved', 'success');
 };
 
@@ -682,7 +690,7 @@ window.saveWebhookName = async (id) => {
     const name = document.getElementById('webhook-name').value;
     if (!name) return showToast('Name cannot be empty', 'error');
 
-    await api(`/ webhooks / ${ id }`, 'PUT', { name });
+    await api(`/ webhooks / ${id}`, 'PUT', { name });
     showToast('Name updated', 'success');
 };
 
@@ -702,10 +710,10 @@ window.testEmail = async (id) => {
     if (!data.senderId) { showToast('Please select a sender', 'error'); return; }
     if (!data.emailTemplate.to) { showToast('Please set a To address', 'error'); return; }
 
-    await api(`/ webhooks / ${ id }`, 'PUT', data);
+    await api(`/ webhooks / ${id}`, 'PUT', data);
 
     showToast('Sending test email...', 'info');
-    const res = await api(`/ webhooks / ${ id } / test - email`, 'POST', data);
+    const res = await api(`/ webhooks / ${id} / test - email`, 'POST', data);
     const json = await res.json();
 
     if (json.success) {
@@ -716,20 +724,20 @@ window.testEmail = async (id) => {
 };
 
 window.activateWebhook = async (id) => {
-    await api(`/ webhooks / ${ id }`, 'PUT', { status: 'Active' });
+    await api(`/ webhooks / ${id}`, 'PUT', { status: 'Active' });
     renderWebhookEditor(id);
     showToast('Webhook Activated!', 'success');
 };
 
 window.deactivateWebhook = async (id) => {
-    await api(`/ webhooks / ${ id }`, 'PUT', { status: 'Draft' });
+    await api(`/ webhooks / ${id}`, 'PUT', { status: 'Draft' });
     renderWebhookEditor(id);
     showToast('Webhook Deactivated', 'info');
 };
 
 window.deleteWebhook = async (id) => {
     if (confirm('Are you sure? This cannot be undone.')) {
-        await api(`/ webhooks / ${ id }`, 'DELETE');
+        await api(`/ webhooks / ${id}`, 'DELETE');
         navigate('/dashboard');
     }
 };
@@ -737,7 +745,7 @@ window.deleteWebhook = async (id) => {
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     const el = document.createElement('div');
-    el.className = `toast ${ type }`;
+    el.className = `toast ${type}`;
     el.innerText = msg;
     container.appendChild(el);
     setTimeout(() => el.remove(), 3000);
@@ -752,9 +760,9 @@ function showPromptModal(message, isTextarea = false) {
                 <h3>${message}</h3>
                 <form id="prompt-form">
                     ${isTextarea
-                        ? `<textarea id="prompt-input" style="margin-bottom: 1rem; min-height: 200px; font-family: monospace" required autofocus></textarea>`
-                        : `<input id="prompt-input" style="margin-bottom: 1rem" required autofocus autocomplete="off">`
-                    }
+                ? `<textarea id="prompt-input" style="margin-bottom: 1rem; min-height: 200px; font-family: monospace" required autofocus></textarea>`
+                : `<input id="prompt-input" style="margin-bottom: 1rem" required autofocus autocomplete="off">`
+            }
                     <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
                         <button type="button" class="btn" id="prompt-cancel">Cancel</button>
                         <button type="submit" class="btn btn-primary">OK</button>
@@ -784,12 +792,12 @@ function showPromptModal(message, isTextarea = false) {
 window.regenerateWebhookUrl = async (id) => {
     if (!confirm('Are you sure? This will invalidate the old URL immediately.')) return;
 
-    const res = await api(`/ webhooks / ${ id } / regenerate`, 'POST');
+    const res = await api(`/ webhooks / ${id} / regenerate`, 'POST');
     if (res && res.ok) {
         const data = await res.json();
         showToast('New URL Generated', 'success');
         // Update router
-        navigate(`/ webhook / ${ data.newId }`);
+        navigate(`/ webhook / ${data.newId}`);
     } else {
         showToast('Failed to regenerate URL', 'error');
     }
@@ -797,7 +805,7 @@ window.regenerateWebhookUrl = async (id) => {
 
 window.clearWebhookLogs = async (id) => {
     if (!confirm('Clear all automation logs for this webhook?')) return;
-    await api(`/ webhooks / ${ id } / logs`, 'DELETE');
+    await api(`/ webhooks / ${id} / logs`, 'DELETE');
     renderWebhookEditor(id);
     showToast('Logs cleared', 'success');
 };
@@ -840,7 +848,7 @@ function discoverVariables(payload, prefix = '') {
     if (!payload || typeof payload !== 'object') return vars;
 
     for (const [key, value] of Object.entries(payload)) {
-        const fullKey = prefix ? `${ prefix }.${ key }` : key;
+        const fullKey = prefix ? `${prefix}.${key}` : key;
 
         if (Array.isArray(value)) {
             // Check if array items are objects?
