@@ -5,4 +5,4 @@ npm-debug.log
 Thumbs.db
 
 # Data directory contains runtime data and credentials
-
+data/
