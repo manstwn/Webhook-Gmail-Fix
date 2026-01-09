@@ -664,7 +664,7 @@ window.openSenderModal = (sender = null) => {
 
 window.deleteSender = async (id) => {
     if (confirm('Delete this sender?')) {
-        await api(`/ email - park / ${id}`, 'DELETE');
+        await api(`/email-park/${id}`, 'DELETE');
         renderEmailPark();
     }
 };
@@ -690,8 +690,12 @@ window.saveWebhookName = async (id) => {
     const name = document.getElementById('webhook-name').value;
     if (!name) return showToast('Name cannot be empty', 'error');
 
-    await api(`/ webhooks / ${id}`, 'PUT', { name });
-    showToast('Name updated', 'success');
+    const res = await api(`/webhooks/${id}`, 'PUT', { name });
+    if (res.ok) {
+        showToast('Name updated', 'success');
+    } else {
+        showToast('Failed to update name', 'error');
+    }
 };
 
 
