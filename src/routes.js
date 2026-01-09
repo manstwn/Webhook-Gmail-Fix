@@ -110,7 +110,10 @@ router.put('/api/webhooks/:id', (req, res) => {
     // Updates
     const updated = { ...webhooks[index], ...changes };
     webhooks[index] = updated;
-    db.write('webhooks', webhooks);
+
+    if (!db.write('webhooks', webhooks)) {
+        return res.status(500).json({ error: 'Failed to write data' });
+    }
 
     res.json(updated);
 });

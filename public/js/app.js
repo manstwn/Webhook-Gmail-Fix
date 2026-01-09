@@ -681,8 +681,12 @@ window.saveWebhook = async (id) => {
         }
     };
 
-    await api(`/ webhooks / ${id}`, 'PUT', data);
-    showToast('Draft saved', 'success');
+    const res = await api(`/webhooks/${id}`, 'PUT', data);
+    if (res.ok) {
+        showToast('Draft saved', 'success');
+    } else {
+        showToast('Failed to save draft', 'error');
+    }
 };
 
 
@@ -898,7 +902,7 @@ window.showLogDetails = async (id) => {
     if (!log) return showToast('Log not found', 'error');
 
     const html = `
-            < div style = "position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000" onclick = "this.remove()" >
+        <div style="position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000" onclick="this.remove()">
             <div class="card" style="width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem">
                     <h3>Log Details</h3>
@@ -907,17 +911,17 @@ window.showLogDetails = async (id) => {
 
                 <div style="margin-bottom: 1rem">
                     <strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}<br>
-                        <strong>Status:</strong> ${log.status}<br>
-                            <strong>Email Status:</strong> <span class="${log.emailStatus === 'Sent' ? 'text-success' : 'text-danger'}">${log.emailStatus}</span>
-                        </div>
+                    <strong>Status:</strong> ${log.status}<br>
+                    <strong>Email Status:</strong> <span class="${log.emailStatus === 'Sent' ? 'text-success' : 'text-danger'}">${log.emailStatus}</span>
+                </div>
 
-                        ${log.error ? `<div class="code-block" style="color: var(--danger); margin-bottom: 1rem">${log.error}</div>` : ''}
-                        ${log.messageId ? `<div class="code-block" style="color: var(--success); margin-bottom: 1rem">Message ID: ${log.messageId}</div>` : ''}
+                ${log.error ? `<div class="code-block" style="color: var(--danger); margin-bottom: 1rem">${log.error}</div>` : ''}
+                ${log.messageId ? `<div class="code-block" style="color: var(--success); margin-bottom: 1rem">Message ID: ${log.messageId}</div>` : ''}
 
-                        <h4>Payload Data</h4>
-                        <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${formatJson(log.payload)}</div>
+                <h4>Payload Data</h4>
+                <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${formatJson(log.payload)}</div>
 
-                        ${log.emailStatus !== 'Skipped (Draft)' ? `
+                ${log.emailStatus !== 'Skipped (Draft)' ? `
                     <h4>Email Sent</h4>
                     <div class="card" style="background: rgba(255,255,255,0.05); padding: 1rem">
                         <div style="margin-bottom: 0.5rem"><strong>To:</strong> ${escapeHtml(log.recipient || '-')}</div>
@@ -926,12 +930,12 @@ window.showLogDetails = async (id) => {
                         <div style="white-space: pre-wrap; font-family: sans-serif">${log.body ? escapeHtml(log.body) : '-'}</div>
                     </div>
                 ` : ''}
-                </div>
             </div>
+        </div>
     `;
     const div = document.createElement('div');
-    div.innerHTML = html;
-    document.body.appendChild(div.firstElementChild);
+    div.innerHTML = html.trim(); // Trim to ensure firstChild is the div
+    document.body.appendChild(div.firstChild);
 };
 
 // Patching renderWebhookEditor "To" field manually here in the string
