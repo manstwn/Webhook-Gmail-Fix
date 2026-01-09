@@ -205,7 +205,8 @@ async function renderEmailPark() {
                 <h3>${s.name}</h3>
                 <p><strong>From:</strong> ${s.fromName} &lt;${s.fromEmail}&gt;</p>
                 <p><strong>Host:</strong> ${s.host}:${s.port}</p>
-                <div style="margin-top: 1rem">
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem">
+                    <button class="btn btn-sm btn-primary" onclick='openSenderModal(${JSON.stringify(s)})'>Edit</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteSender('${s.id}')">Delete</button>
                 </div>
             </div>
@@ -592,23 +593,24 @@ window.insertVar = (text) => {
     showToast('Variable copied! Paste it in Subject or Body.', 'success');
 };
 
-window.openSenderModal = () => {
+window.openSenderModal = (sender = null) => {
+    const isEdit = !!sender;
     const html = `
         <div style="position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000" onclick="this.remove()">
             <div class="card" style="width: 400px; max-width: 90%" onclick="event.stopPropagation()">
-                <h3>Add Sender</h3>
+                <h3>${isEdit ? 'Edit Sender' : 'Add Sender'}</h3>
                 <form id="sender-form">
-                    <div class="form-group"><label>Name (e.g. Work Email)</label><input id="s-name" required></div>
-                    <div class="form-group"><label>From Name</label><input id="s-fromName" required></div>
-                    <div class="form-group"><label>From Email</label><input type="email" id="s-fromEmail" required></div>
-                    <div class="form-group"><label>SMTP Host</label><input id="s-host" required></div>
-                    <div class="form-group"><label>SMTP Port</label><input type="number" id="s-port" value="587" required></div>
-                    <div class="form-group"><label>User</label><input id="s-user" required></div>
-                    <div class="form-group"><label>Password</label><input type="password" id="s-pass" required></div>
+                    <div class="form-group"><label>Name (e.g. Work Email)</label><input id="s-name" value="${sender?.name || ''}" required></div>
+                    <div class="form-group"><label>From Name</label><input id="s-fromName" value="${sender?.fromName || ''}" required></div>
+                    <div class="form-group"><label>From Email</label><input type="email" id="s-fromEmail" value="${sender?.fromEmail || ''}" required></div>
+                    <div class="form-group"><label>SMTP Host</label><input id="s-host" value="${sender?.host || ''}" required></div>
+                    <div class="form-group"><label>SMTP Port</label><input type="number" id="s-port" value="${sender?.port || '587'}" required></div>
+                    <div class="form-group"><label>User</label><input id="s-user" value="${sender?.user || ''}" required></div>
+                    <div class="form-group"><label>Password</label><input type="password" id="s-pass" value="${sender?.pass || ''}" required></div>
                      <div class="form-group">
-                             <label><input type="checkbox" id="s-secure"> Secure (SSL/465)</label>
+                             <label><input type="checkbox" id="s-secure" ${sender?.secure ? 'checked' : ''}> Secure (SSL/465)</label>
                     </div>
-                    <button type="submit" class="btn btn-primary">Save Sender</button>
+                    <button type="submit" class="btn btn-primary">${isEdit ? 'Update Sender' : 'Save Sender'}</button>
                 </form>
             </div>
         </div>
@@ -640,8 +642,13 @@ window.openSenderModal = () => {
             return;
         }
 
-        await api('/email-park', 'POST', data);
-        showToast('Sender added!', 'success');
+        if (isEdit) {
+            await api(\`/email-park/\${sender.id}\`, 'PUT', data);
+            showToast('Sender updated!', 'success');
+        } else {
+            await api('/email-park', 'POST', data);
+            showToast('Sender added!', 'success');
+        }
         document.querySelector('[onclick="this.remove()"]').click(); // close modal
         renderEmailPark();
     };
@@ -649,7 +656,7 @@ window.openSenderModal = () => {
 
 window.deleteSender = async (id) => {
     if (confirm('Delete this sender?')) {
-        await api(`/email-park/${id}`, 'DELETE');
+        await api(`/ email - park / ${ id }`, 'DELETE');
         renderEmailPark();
     }
 };
@@ -666,7 +673,7 @@ window.saveWebhook = async (id) => {
         }
     };
 
-    await api(`/webhooks/${id}`, 'PUT', data);
+    await api(`/ webhooks / ${ id }`, 'PUT', data);
     showToast('Draft saved', 'success');
 };
 
@@ -675,7 +682,7 @@ window.saveWebhookName = async (id) => {
     const name = document.getElementById('webhook-name').value;
     if (!name) return showToast('Name cannot be empty', 'error');
 
-    await api(`/webhooks/${id}`, 'PUT', { name });
+    await api(`/ webhooks / ${ id }`, 'PUT', { name });
     showToast('Name updated', 'success');
 };
 
@@ -695,10 +702,10 @@ window.testEmail = async (id) => {
     if (!data.senderId) { showToast('Please select a sender', 'error'); return; }
     if (!data.emailTemplate.to) { showToast('Please set a To address', 'error'); return; }
 
-    await api(`/webhooks/${id}`, 'PUT', data);
+    await api(`/ webhooks / ${ id }`, 'PUT', data);
 
     showToast('Sending test email...', 'info');
-    const res = await api(`/webhooks/${id}/test-email`, 'POST', data);
+    const res = await api(`/ webhooks / ${ id } / test - email`, 'POST', data);
     const json = await res.json();
 
     if (json.success) {
@@ -709,20 +716,20 @@ window.testEmail = async (id) => {
 };
 
 window.activateWebhook = async (id) => {
-    await api(`/webhooks/${id}`, 'PUT', { status: 'Active' });
+    await api(`/ webhooks / ${ id }`, 'PUT', { status: 'Active' });
     renderWebhookEditor(id);
     showToast('Webhook Activated!', 'success');
 };
 
 window.deactivateWebhook = async (id) => {
-    await api(`/webhooks/${id}`, 'PUT', { status: 'Draft' });
+    await api(`/ webhooks / ${ id }`, 'PUT', { status: 'Draft' });
     renderWebhookEditor(id);
     showToast('Webhook Deactivated', 'info');
 };
 
 window.deleteWebhook = async (id) => {
     if (confirm('Are you sure? This cannot be undone.')) {
-        await api(`/webhooks/${id}`, 'DELETE');
+        await api(`/ webhooks / ${ id }`, 'DELETE');
         navigate('/dashboard');
     }
 };
@@ -730,7 +737,7 @@ window.deleteWebhook = async (id) => {
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
     const el = document.createElement('div');
-    el.className = `toast ${type}`;
+    el.className = `toast ${ type }`;
     el.innerText = msg;
     container.appendChild(el);
     setTimeout(() => el.remove(), 3000);
@@ -740,22 +747,22 @@ function showPromptModal(message, isTextarea = false) {
     return new Promise((resolve) => {
         const div = document.createElement('div');
         div.innerHTML = `
-            <div style="position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000">
-                <div class="card" style="min-width: 300px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
-                    <h3>${message}</h3>
-                    <form id="prompt-form">
-                        ${isTextarea
-                ? `<textarea id="prompt-input" style="margin-bottom: 1rem; min-height: 200px; font-family: monospace" required autofocus></textarea>`
-                : `<input id="prompt-input" style="margin-bottom: 1rem" required autofocus autocomplete="off">`
-            }
-                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
-                            <button type="button" class="btn" id="prompt-cancel">Cancel</button>
-                            <button type="submit" class="btn btn-primary">OK</button>
-                        </div>
-                    </form>
-                </div>
+            < div style = "position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000" >
+            <div class="card" style="min-width: 300px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+                <h3>${message}</h3>
+                <form id="prompt-form">
+                    ${isTextarea
+                        ? `<textarea id="prompt-input" style="margin-bottom: 1rem; min-height: 200px; font-family: monospace" required autofocus></textarea>`
+                        : `<input id="prompt-input" style="margin-bottom: 1rem" required autofocus autocomplete="off">`
+                    }
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
+                        <button type="button" class="btn" id="prompt-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">OK</button>
+                    </div>
+                </form>
             </div>
-        `;
+            </div >
+                `;
         document.body.appendChild(div);
         const input = div.querySelector('#prompt-input');
         input.focus();
@@ -777,12 +784,12 @@ function showPromptModal(message, isTextarea = false) {
 window.regenerateWebhookUrl = async (id) => {
     if (!confirm('Are you sure? This will invalidate the old URL immediately.')) return;
 
-    const res = await api(`/webhooks/${id}/regenerate`, 'POST');
+    const res = await api(`/ webhooks / ${ id } / regenerate`, 'POST');
     if (res && res.ok) {
         const data = await res.json();
         showToast('New URL Generated', 'success');
         // Update router
-        navigate(`/webhook/${data.newId}`);
+        navigate(`/ webhook / ${ data.newId }`);
     } else {
         showToast('Failed to regenerate URL', 'error');
     }
@@ -790,7 +797,7 @@ window.regenerateWebhookUrl = async (id) => {
 
 window.clearWebhookLogs = async (id) => {
     if (!confirm('Clear all automation logs for this webhook?')) return;
-    await api(`/webhooks/${id}/logs`, 'DELETE');
+    await api(`/ webhooks / ${ id } / logs`, 'DELETE');
     renderWebhookEditor(id);
     showToast('Logs cleared', 'success');
 };
@@ -833,13 +840,13 @@ function discoverVariables(payload, prefix = '') {
     if (!payload || typeof payload !== 'object') return vars;
 
     for (const [key, value] of Object.entries(payload)) {
-        const fullKey = prefix ? `${prefix}.${key}` : key;
+        const fullKey = prefix ? `${ prefix }.${ key }` : key;
 
         if (Array.isArray(value)) {
             // Check if array items are objects?
             if (value.length > 0 && typeof value[0] === 'object') {
                 // Maybe discover unique keys from first item to give a hint?
-                // vars = vars.concat(discoverVariables(value[0], `${fullKey}[0]`));
+                // vars = vars.concat(discoverVariables(value[0], `${ fullKey }[0]`));
             }
             vars.push({ key: fullKey, type: 'Array' });
         } else if (value !== null && typeof value === 'object') {
@@ -879,26 +886,26 @@ window.showLogDetails = async (id) => {
     if (!log) return showToast('Log not found', 'error');
 
     const html = `
-        <div style="position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000" onclick="this.remove()">
+            < div style = "position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2000" onclick = "this.remove()" >
             <div class="card" style="width: 600px; max-width: 90%; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem">
                     <h3>Log Details</h3>
                     <button class="btn btn-sm" onclick="this.closest('.card').parentElement.remove()"><i class="fas fa-times"></i></button>
                 </div>
-                
+
                 <div style="margin-bottom: 1rem">
                     <strong>Time:</strong> ${new Date(log.timestamp).toLocaleString()}<br>
-                    <strong>Status:</strong> ${log.status}<br>
-                    <strong>Email Status:</strong> <span class="${log.emailStatus === 'Sent' ? 'text-success' : 'text-danger'}">${log.emailStatus}</span>
-                </div>
+                        <strong>Status:</strong> ${log.status}<br>
+                            <strong>Email Status:</strong> <span class="${log.emailStatus === 'Sent' ? 'text-success' : 'text-danger'}">${log.emailStatus}</span>
+                        </div>
 
-                ${log.error ? `<div class="code-block" style="color: var(--danger); margin-bottom: 1rem">${log.error}</div>` : ''}
-                ${log.messageId ? `<div class="code-block" style="color: var(--success); margin-bottom: 1rem">Message ID: ${log.messageId}</div>` : ''}
+                        ${log.error ? `<div class="code-block" style="color: var(--danger); margin-bottom: 1rem">${log.error}</div>` : ''}
+                        ${log.messageId ? `<div class="code-block" style="color: var(--success); margin-bottom: 1rem">Message ID: ${log.messageId}</div>` : ''}
 
-                <h4>Payload Data</h4>
-                <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${formatJson(log.payload)}</div>
-                
-                ${log.emailStatus !== 'Skipped (Draft)' ? `
+                        <h4>Payload Data</h4>
+                        <div class="code-block" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem">${formatJson(log.payload)}</div>
+
+                        ${log.emailStatus !== 'Skipped (Draft)' ? `
                     <h4>Email Sent</h4>
                     <div class="card" style="background: rgba(255,255,255,0.05); padding: 1rem">
                         <div style="margin-bottom: 0.5rem"><strong>To:</strong> ${escapeHtml(log.recipient || '-')}</div>
@@ -907,8 +914,8 @@ window.showLogDetails = async (id) => {
                         <div style="white-space: pre-wrap; font-family: sans-serif">${log.body ? escapeHtml(log.body) : '-'}</div>
                     </div>
                 ` : ''}
+                </div>
             </div>
-        </div>
     `;
     const div = document.createElement('div');
     div.innerHTML = html;
