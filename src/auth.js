@@ -13,10 +13,10 @@ function requireAuth(req, res, next) {
 // Logic for login
 function login(req, res) {
     const { pin } = req.body;
-    const userConfig = db.read('users');
+    const settings = db.read('settings');
 
     // Simple PIN check
-    if (pin === userConfig.pin) {
+    if (pin === settings.pin) {
         // Set signed cookie
         res.cookie(COOKIE_NAME, 'authenticated', {
             httpOnly: true,

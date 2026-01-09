@@ -70,8 +70,8 @@ async function router() {
         }
     } else if (path === '/email-park') {
         renderEmailPark();
-    } else if (path === '/settings/cors') {
-        renderCorsSettings();
+    } else if (path === '/settings') {
+        renderSettings();
     } else {
         renderDashboard();
     }
@@ -81,6 +81,21 @@ window.addEventListener('popstate', router);
 window.addEventListener('load', init);
 
 // --- Views ---
+
+
+function getNavHtml(activePage) {
+    return `
+        <nav class="nav">
+            <div class="nav-logo" onclick="navigate('/dashboard')" style="cursor: pointer"><i class="fas fa-bolt"></i> Webhook Mailer</div>
+            <div class="nav-links">
+                <div class="nav-item ${activePage === 'dashboard' ? 'active' : ''}" onclick="navigate('/dashboard')">Dashboard</div>
+                <div class="nav-item ${activePage === 'email-park' ? 'active' : ''}" onclick="navigate('/email-park')">Email Park</div>
+                <div class="nav-item ${activePage === 'settings' ? 'active' : ''}" onclick="navigate('/settings')">Settings</div>
+                <div class="nav-item" onclick="logout()">Logout</div>
+            </div>
+        </nav>
+    `;
+}
 
 function renderLogin() {
     app.innerHTML = `
@@ -119,15 +134,7 @@ async function renderDashboard() {
     const webhooks = await webhooksRes.json();
 
     app.innerHTML = `
-        <nav class="nav">
-            <div class="nav-logo"><i class="fas fa-bolt"></i> Webhook Mailer</div>
-            <div class="nav-links">
-                <div class="nav-item active">Dashboard</div>
-                <div class="nav-item" onclick="navigate('/email-park')">Email Park</div>
-                <div class="nav-item" onclick="navigate('/settings/cors')">CORS Settings</div>
-                <div class="nav-item" onclick="logout()">Logout</div>
-            </div>
-        </nav>
+        ${getNavHtml('dashboard')}
         
         <div class="container">
             <div class="grid">
@@ -175,15 +182,7 @@ async function renderEmailPark() {
     const senders = await res.json();
 
     app.innerHTML = `
-        <nav class="nav">
-            <div class="nav-logo" onclick="navigate('/dashboard')" style="cursor: pointer"><i class="fas fa-bolt"></i> Webhook Mailer</div>
-            <div class="nav-links">
-                <div class="nav-item" onclick="navigate('/dashboard')">Dashboard</div>
-                <div class="nav-item active">Email Park</div>
-                <div class="nav-item" onclick="navigate('/settings/cors')">CORS Settings</div>
-                <div class="nav-item" onclick="logout()">Logout</div>
-            </div>
-        </nav>
+        ${getNavHtml('email-park')}
         
         <div class="container">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem">
@@ -214,47 +213,99 @@ async function renderEmailPark() {
     });
 }
 
-async function renderCorsSettings() {
-    const res = await api('/settings/cors');
-    const cors = await res.json();
+async function renderSettings() {
+    // Fetch both settings
+    const [corsRes, limitRes] = await Promise.all([
+        api('/settings/cors'),
+        api('/settings/rate-limit')
+    ]);
+    const cors = await corsRes.json();
+    let limits = await limitRes.json();
+
+    const defaults = {
+        webhookLimit: 30, webhookWindow: 60000,
+        ipLimit: 60, ipWindow: 60000,
+        burstLimit: 5, burstWindow: 1000
+    };
+    limits = { ...defaults, ...limits };
 
     app.innerHTML = `
-        <nav class="nav">
-            <div class="nav-logo" onclick="navigate('/dashboard')" style="cursor: pointer"><i class="fas fa-bolt"></i> Webhook Mailer</div>
-            <div class="nav-links">
-                <div class="nav-item" onclick="navigate('/dashboard')">Dashboard</div>
-                <div class="nav-item" onclick="navigate('/email-park')">Email Park</div>
-                <div class="nav-item active">CORS Settings</div>
-                <div class="nav-item" onclick="logout()">Logout</div>
-            </div>
-        </nav>
+        ${getNavHtml('settings')}
         
         <div class="container">
-            <div class="card" style="max-width: 600px; margin: 0 auto;">
-                <h3>Global CORS Settings</h3>
-                <p>Manage allowed origins that can send requests to your webhooks.</p>
-                
-                <div class="form-group" style="display: flex; gap: 0.5rem">
-                    <input type="text" id="cors-input" placeholder="https://example.com or *" style="flex: 1">
-                    <button class="btn btn-primary" onclick="addCorsOrigin()">Add Origin</button>
+            <div class="grid">
+                <!-- CORS Config -->
+                <div class="card">
+                    <h3>Global CORS Settings</h3>
+                    <p>Manage allowed origins that can send requests to your webhooks.</p>
+                    
+                    <div class="form-group" style="display: flex; gap: 0.5rem">
+                        <input type="text" id="cors-input" placeholder="https://example.com or *" style="flex: 1">
+                        <button class="btn btn-primary" onclick="addCorsOrigin()">Add Origin</button>
+                    </div>
+                    
+                    <div class="list-group" id="cors-list" style="border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1rem">
+                        ${cors.map(origin => `
+                            <div style="padding: 1rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02)">
+                                <span style="font-family: monospace;">${origin}</span>
+                                <button class="btn btn-sm btn-danger" onclick="removeCorsOrigin('${origin}')"><i class="fas fa-trash"></i></button>
+                            </div>
+                        `).join('')}
+                        ${cors.length === 0 ? '<div style="padding: 1rem; text-align: center; color: var(--text-muted)">No allowed origins configured. Requests may be blocked.</div>' : ''}
+                    </div>
+                    
+                    <div style="font-size: 0.85rem; color: var(--text-muted)">
+                         Use <code>*</code> to allow all origins.
+                    </div>
                 </div>
-                
-                <div class="list-group" id="cors-list" style="border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden;">
-                    ${cors.map(origin => `
-                        <div style="padding: 1rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02)">
-                            <span style="font-family: monospace;">${origin}</span>
-                            <button class="btn btn-sm btn-danger" onclick="removeCorsOrigin('${origin}')"><i class="fas fa-trash"></i></button>
+
+                <!-- Rate Limit Config -->
+                <div class="card">
+                    <h3>Spam Protection</h3>
+                    <p>Configure rate limits to protect your server.</p>
+                    
+                    <form id="rate-limit-form">
+                        <div class="form-group">
+                            <label>Per Webhook Limit (requests/min)</label>
+                            <input type="number" id="webhookLimit" value="${limits.webhookLimit}" required>
                         </div>
-                    `).join('')}
-                    ${cors.length === 0 ? '<div style="padding: 1rem; text-align: center; color: var(--text-muted)">No allowed origins configured. Requests may be blocked.</div>' : ''}
-                </div>
-                
-                <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted)">
-                    <i class="fas fa-info-circle"></i> Use <code>*</code> to allow all origins (not recommended for production).
+                        
+                        <div class="form-group">
+                            <label>Global IP Limit (requests/min)</label>
+                            <input type="number" id="ipLimit" value="${limits.ipLimit}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Burst Limit (requests/second)</label>
+                            <input type="number" id="burstLimit" value="${limits.burstLimit}" required>
+                        </div>
+
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem">
+                            Applies immediately. Windows: 1 min, 1 sec (burst).
+                        </p>
+
+                        <button type="submit" class="btn btn-primary">Save Limits</button>
+                    </form>
                 </div>
             </div>
         </div>
     `;
+
+    document.getElementById('rate-limit-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            webhookLimit: parseInt(document.getElementById('webhookLimit').value),
+            webhookWindow: 60000,
+            ipLimit: parseInt(document.getElementById('ipLimit').value),
+            ipWindow: 60000,
+            burstLimit: parseInt(document.getElementById('burstLimit').value),
+            burstWindow: 1000
+        };
+
+        await api('/settings/rate-limit', 'POST', data);
+        showToast('Limits saved!', 'success');
+        renderSettings();
+    };
 }
 
 window.addCorsOrigin = async () => {
@@ -263,14 +314,16 @@ window.addCorsOrigin = async () => {
     if (!origin) return;
 
     await api('/settings/cors', 'POST', { origin });
-    renderCorsSettings();
+    renderSettings();
     showToast('Origin added', 'success');
 };
+
+
 
 window.removeCorsOrigin = async (origin) => {
     if (!confirm(`Remove ${origin}?`)) return;
     await api('/settings/cors', 'DELETE', { origin });
-    renderCorsSettings();
+    renderSettings();
     showToast('Origin removed', 'success');
 };
 
@@ -306,13 +359,7 @@ window.renderWebhookEditor = async (id) => {
     const logs = await logsRes.json();
 
     app.innerHTML = `
-        <nav class="nav">
-            <div class="nav-logo" onclick="navigate('/dashboard')" style="cursor: pointer"><i class="fas fa-bolt"></i> Webhook Mailer</div>
-            <div class="nav-links">
-                <div class="nav-item active">Editor</div>
-                <div class="nav-item" onclick="deleteWebhook('${id}')" style="color: var(--danger)">Delete Webhook</div>
-            </div>
-        </nav>
+        ${getNavHtml('')}
         
         <div class="container editor-layout">
             
@@ -323,6 +370,7 @@ window.renderWebhookEditor = async (id) => {
                         <div style="display: flex; gap: 0.5rem">
                             <input type="text" id="webhook-name" value="${webhook.name}" style="flex: 1">
                             <button class="btn btn-primary" onclick="saveWebhookName('${id}')">Save Name</button>
+                            <button class="btn btn-danger" onclick="deleteWebhook('${id}')">Delete</button>
                         </div>
                      </div>
                 </div>

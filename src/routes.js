@@ -6,10 +6,12 @@ const webhookHandler = require('./webhookHandler');
 const emailService = require('./emailService');
 const { v4: uuidv4 } = require('uuid');
 
+const { webhookLimiter, ipLimiter, burstLimiter } = require('./middleware/rateLimiter');
+
 // --- Public Routes ---
 
 // The actual webhook receiving endpoint
-router.post('/webhooks/:id', async (req, res) => {
+router.post('/webhooks/:id', ipLimiter, burstLimiter, webhookLimiter, async (req, res) => {
     const { id } = req.params;
     console.log(`Webhook hit: ${id}`);
     const result = await webhookHandler.processWebhook(id, req.body);
@@ -266,28 +268,49 @@ router.delete('/api/webhooks/:id/logs', (req, res) => {
 
 // Settings / CORS
 router.get('/api/settings/cors', (req, res) => {
-    const cors = db.read('cors') || ['*'];
-    res.json(cors);
+    const settings = db.read('settings');
+    res.json(settings.cors || []);
 });
 
 router.post('/api/settings/cors', (req, res) => {
     const { origin } = req.body;
     if (!origin) return res.status(400).json({ error: 'Origin is required' });
 
-    const cors = db.read('cors') || [];
+    const settings = db.read('settings');
+    const cors = settings.cors || ["*"];
+
     if (!cors.includes(origin)) {
         cors.push(origin);
-        db.write('cors', cors);
+        settings.cors = cors;
+        db.write('settings', settings);
     }
-    res.json(cors);
+
+    res.json({ success: true });
 });
 
 router.delete('/api/settings/cors', (req, res) => {
     const { origin } = req.body;
-    let cors = db.read('cors') || [];
+    const settings = db.read('settings');
+    let cors = settings.cors || ["*"];
+
     cors = cors.filter(o => o !== origin);
-    db.write('cors', cors);
-    res.json(cors);
+    settings.cors = cors;
+    db.write('settings', settings);
+
+    res.json({ success: true });
+});
+
+router.get('/api/settings/rate-limit', (req, res) => {
+    const settings = db.read('settings');
+    res.json(settings.rateLimits || {});
+});
+
+router.post('/api/settings/rate-limit', (req, res) => {
+    const settings = db.read('settings');
+    settings.rateLimits = { ...settings.rateLimits, ...req.body };
+
+    db.write('settings', settings);
+    res.json({ success: true });
 });
 
 module.exports = router;

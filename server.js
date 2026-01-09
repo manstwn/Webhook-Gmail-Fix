@@ -12,9 +12,12 @@ const PORT = process.env.PORT || 3000;
 console.log("Initializing data...");
 db.ensureDataDir();
 
+const { ipLimiter, webhookLimiter, burstLimiter } = require('./src/middleware/rateLimiter');
+
 // Middleware
 app.use((req, res, next) => {
-    const allowedOrigins = db.read('cors') || ['*'];
+    const settings = db.read('settings');
+    const allowedOrigins = settings.cors || ["*"];
     const origin = req.headers.origin;
 
     if (allowedOrigins.includes('*')) {
@@ -30,6 +33,9 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// Apply Rate Limits
+// Rate limits are now applied specifically to webhook routes in src/routes.js
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
